@@ -96,6 +96,9 @@ class GreedyPlayer(Agent):
                 best_move_index = i
             
             self.score_sheet = copy.deepcopy(original_score_sheet)
+
+        #restore score sheet to original state
+        self.score_sheet = copy.deepcopy(original_score_sheet)
         
         # Return the index of the move with the highest score
         return best_move_index
@@ -130,6 +133,9 @@ class HeuristicGreedyPlayer(Agent):
                     best_move_index = i
                     best_score = score_after_move
                     best_distance = distance
+
+        #restore score sheet to original state
+        self.score_sheet = copy.deepcopy(original_score_sheet)
         
         # If no move satisfies the constraint, resort to greedy choice
         if best_move_index is None:
@@ -148,6 +154,12 @@ class HeuristicGreedyPlayer(Agent):
             distance = abs(number - last_number)
 
             #check constraints
+            #override for locking
+            if self.score_sheet[color]['order'] == 'increasing' and number == 12:
+                return True
+            elif self.score_sheet[color]['order'] == 'decreasing' and number == 2:
+                return True
+            #regular constraints
             if last_number >= 5 and last_number <= 8:
                     if distance <= 2:
                         return True
@@ -211,6 +223,9 @@ class HeuristicGreedyPlayer(Agent):
                 best_move_index = i
             
             self.score_sheet = copy.deepcopy(original_score_sheet)
+
+        #restore score sheet to original state
+        self.score_sheet = copy.deepcopy(original_score_sheet)
         
         # Return the index of the move with the highest score
         return best_move_index
