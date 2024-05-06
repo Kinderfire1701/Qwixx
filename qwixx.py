@@ -188,7 +188,8 @@ class QwixxGame:
                 possible_moves.append((white_dice_1.value + white_dice_2.value, color))
 
         possible_moves.append('Pass')
-        possible_moves.append('Q')
+        if isinstance(player, HumanPlayer):
+            possible_moves.append('Q')
 
         # Prompt the choice method of each player
         move_choice = player.choose_move(possible_moves)        
@@ -237,7 +238,8 @@ class QwixxGame:
                     possible_moves.append(move)
             
         possible_moves.append('Penalty')
-        possible_moves.append('Q')
+        if isinstance(player, HumanPlayer):
+            possible_moves.append('Q')
 
         # Prompt the choice method of each player
         move_choice = player.choose_move(possible_moves)        
