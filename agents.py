@@ -42,20 +42,40 @@ class Agent:
         if row['order'] == 'increasing' and move[0] == 12:
             row['last_number'] = move[0]
             row['x_count'] += 2
+            row['order'] = 'locked'
         elif row['order'] == 'decreasing' and move[0] == 2:
             row['last_number'] = move[0]
             row['x_count'] += 2
+            row['order'] = 'locked'
         else:
             row['last_number'] = move[0]
             row['x_count'] += 1
 
 class HumanPlayer(Agent):
     def choose_move(self, possible_moves):
-        print("Available moves:")
-        for i, move in enumerate(possible_moves, 1):
-            print(f"{i}: {move}")
-        choice = int(input("Choose your move: "))
-        return choice
+        while True:
+            print("Possible moves:")
+            for index, move in enumerate(possible_moves):
+                if move == 'Penalty':
+                    print(f"{index}: Take a penalty")
+                elif move == 'Q':
+                    print(f"{index}: Quit the game")
+                elif move == 'Pass':
+                    print(f"{index}: Pass")
+                elif type(move[0]) == int:
+                    print(f"{index}: {move[0]} in {move[1]}")
+                else:
+                    print(f"{index}: {move[0][0]} in {move[0][1]} and {move[1][0]} in {move[1][1]}")
+            
+            move_choice = input("Choose a move (enter the corresponding number): ").upper()
+
+            try:
+                move_choice = int(move_choice)
+                if move_choice < 1 or move_choice > len(possible_moves):
+                    raise ValueError
+                return move_choice
+            except ValueError:
+                print("Invalid input. Please try again.")
 
 class GreedyPlayer(Agent):
     def choose_move(self, possible_moves):
@@ -197,16 +217,44 @@ class HeuristicGreedyPlayer(Agent):
 
 class HeuristicSpacePlayer(Agent):
     def choose_move(self, possible_moves):
-        # Choose the move that maximizes space on the score sheet
-        # (e.g., if adding to a row with few X's opens up more possibilities)
-        best_move = max(possible_moves, key=lambda move: self.calculate_space_gain(move))
-        return possible_moves.index(best_move) + 1
+            least_distance = float('inf')
+            best_move_index = None
+            
+            # Iterate through all possible moves
+            for i, move in enumerate(possible_moves):
+                if move == 'Pass':
+                    distance = 1
+                elif move == 'Penalty':
+                    distance = 13
+                else:
+                    distance = self.get_dist(move)
+                if distance < least_distance:
+                    least_distance = distance
+                    best_move_index = i
+                            
+            # Return the index of the move with the lowest spaces used
+            return best_move_index
 
-    def calculate_space_gain(self, move):
-        if type(move[0]) == int:  # Single move
-            return move[0]
-        else:  # Double move
-            return sum(move[0]) + sum(move[1])
+    def get_dist(self,moves):
+        if type(moves[0]) == int:
+            #get info
+            number, color = moves
+            last_number = self.score_sheet[color]['last_number']
+
+            #calculate distance
+            distance = abs(number - last_number)
+            return distance
+        else:
+            overall_dist = 0
+            for move in moves:
+                #get info
+                number, color = move
+                last_number = self.score_sheet[color]['last_number']
+
+                #calculate distance
+                distance = abs(number - last_number)
+                overall_dist += distance
+            return overall_dist
 
 class QLearnPlayer(Agent):
     def __init__(self):

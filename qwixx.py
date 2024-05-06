@@ -9,7 +9,6 @@ class QwixxGame:
         self.active_player_index = 0
         self.dice = [Dice('Red'), Dice('Yellow'), Dice('Green'), Dice('Blue'), Dice('White'), Dice('White')]
         self.game_over = False
-        self.to_lock = []
         if any(player_type.lower() == "human" for player_type in player_types):
             self.print_info = True
         else:
@@ -38,7 +37,10 @@ class QwixxGame:
                 if color != 'Penalties':
                     last_number = values['last_number']
                     x_count = values['x_count']
-                    print(f"  {color}: Last Number: {last_number}, X Count: {x_count}")
+                    if values['order'] == 'locked':
+                        print(f"  {color}: Last Number: {last_number}, X Count: {x_count}, Locked")
+                    else:
+                        print(f"  {color}: Last Number: {last_number}, X Count: {x_count}")
                 else:
                     penalties = values
                     print(f"  {color}: {penalties}")
@@ -154,10 +156,14 @@ class QwixxGame:
         return False
     
     def lock(self):
-        for color in self.to_lock:
-            for player in self.players:
+        to_lock = []
+        for player in self.players:
+            for color in ['Red', 'Yellow', 'Green', 'Blue']:
+                if player.score_sheet[color]['order'] == 'locked':
+                    to_lock.append(color)
+        for player in self.players:
+            for color in to_lock:
                 player.score_sheet[color]['order'] = 'locked'
-        self.to_lock = []
     
     def inactive_player_move(self,player):
         white_dice_1 = next(die for die in self.dice if die.color == 'White')
@@ -176,9 +182,11 @@ class QwixxGame:
             possible_moves.append('Q')
 
         # Prompt the choice method of each player
-        move_choice = player.choose_move(possible_moves)        
+        move_choice = player.choose_move(possible_moves)    
 
-        chosen_move = possible_moves[move_choice - 1]
+        chosen_move = possible_moves[move_choice]
+        if self.print_info:
+            print(f"{player.__class__.__name__} chose:", chosen_move) 
 
         if chosen_move == 'Q':
             self.game_over = True
@@ -228,7 +236,9 @@ class QwixxGame:
         # Prompt the choice method of each player
         move_choice = player.choose_move(possible_moves)        
 
-        chosen_move = possible_moves[move_choice - 1]
+        chosen_move = possible_moves[move_choice]
+        if self.print_info:
+            print(f"{player.__class__.__name__} chose:", chosen_move)     
 
         if chosen_move == 'Q':
             self.game_over = True
@@ -262,9 +272,10 @@ class QwixxGame:
 
     def calculate_score(self, player):
         return player.calculate_score()
+    
 
 # Start the game
-game = QwixxGame("greedy","heuristic_greedy","heuristic_greedy","heuristic_greedy")
+game = QwixxGame("heuristic_greedy","heuristic_space","greedy")
 
 scores = game.play()
 print(scores)
