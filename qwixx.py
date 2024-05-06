@@ -4,42 +4,31 @@ from dice import Dice
 from agents import HumanPlayer, GreedyPlayer, HeuristicGreedyPlayer, HeuristicSpacePlayer, QLearnPlayer
 
 class QwixxGame:
-    def __init__(self, player1_type, player2_type):
-        self.players = self.initialize_players(player1_type, player2_type)
+    def __init__(self, *player_types):
+        self.players = self.initialize_players(*player_types)
         self.active_player_index = 0
         self.dice = [Dice('Red'), Dice('Yellow'), Dice('Green'), Dice('Blue'), Dice('White'), Dice('White')]
         self.game_over = False
         self.to_lock = []
-        if player1_type == "Human" or player2_type == "Human":
+        if any(player_type.lower() == "human" for player_type in player_types):
             self.print_info = True
         else:
             self.print_info = False
 
-    def initialize_players(self, player1_type, player2_type):
-            players = []
-            if player1_type == "human":
+    def initialize_players(self, *player_types):
+        players = []
+        for player_type in player_types:
+            if player_type.lower() == "human":
                 players.append(HumanPlayer())
-            elif player1_type == "greedy":
+            elif player_type.lower() == "greedy":
                 players.append(GreedyPlayer())
-            elif player1_type == "heuristic_greedy":
+            elif player_type.lower() == "heuristic_greedy":
                 players.append(HeuristicGreedyPlayer())
-            elif player1_type == "heuristic_space":
+            elif player_type.lower() == "heuristic_space":
                 players.append(HeuristicSpacePlayer())
-            elif player1_type == "Q_learn":
+            elif player_type.lower() == "q_learn":
                 players.append(QLearnPlayer())
-
-            if player2_type == "human":
-                players.append(HumanPlayer())
-            elif player2_type == "greedy":
-                players.append(GreedyPlayer())
-            elif player2_type == "heuristic_greedy":
-                players.append(HeuristicGreedyPlayer())
-            elif player2_type == "heuristic_space":
-                players.append(HeuristicSpacePlayer())
-            elif player2_type == "Q_learn":
-                players.append(QLearnPlayer())
-
-            return players
+        return players
 
     def print_score_sheets(self):
         print("Current Score Sheets:")
@@ -275,7 +264,7 @@ class QwixxGame:
         return player.calculate_score()
 
 # Start the game
-game = QwixxGame("greedy","heuristic_greedy")
+game = QwixxGame("greedy","heuristic_greedy","heuristic_greedy","heuristic_greedy")
 
 scores = game.play()
 print(scores)

@@ -128,7 +128,7 @@ class HeuristicGreedyPlayer(Agent):
             distance = abs(number - last_number)
 
             #check constraints
-            if last_number >= 5 and last_number <= 9:
+            if last_number >= 5 and last_number <= 8:
                     if distance <= 2:
                         return True
             elif distance <= 3:
