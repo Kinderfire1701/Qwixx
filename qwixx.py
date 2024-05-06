@@ -282,10 +282,3 @@ class QwixxGame:
 
     def calculate_score(self, player):
         return player.calculate_score()
-    
-
-# Start the game
-#game = QwixxGame("heuristic_greedy","heuristic_space","greedy")
-
-#scores = game.play()
-#print(scores)

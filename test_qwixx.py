@@ -3,7 +3,7 @@ import time
 from collections import defaultdict
 
 from qwixx import QwixxGame
-from agents import HumanPlayer, GreedyPlayer, HeuristicGreedyPlayer
+from agents import HumanPlayer, GreedyPlayer, HeuristicGreedyPlayer, HeuristicSpacePlayer
 
 if __name__ == "__main__":
     games = 1000
@@ -16,10 +16,10 @@ if __name__ == "__main__":
             games = int(sys.argv[1])
     
     # Initialize the game
-    game = QwixxGame("greedy", "heuristic_greedy")  # Replace with your Qwixx game initialization
+    game = QwixxGame("greedy", "heuristic_greedy","heuristic_space")  # Replace with your Qwixx game initialization
     
     # Define the agents
-    agents = [GreedyPlayer(), HeuristicGreedyPlayer()]  # Example agents
+    agents = [GreedyPlayer(), HeuristicGreedyPlayer(), HeuristicSpacePlayer()]  # Example agents
     
     # Track wins for each agent and total games played
     wins = {agent.__class__.__name__: 0 for agent in agents}

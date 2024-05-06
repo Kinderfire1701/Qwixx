@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import random
 import copy
+import time
 
 class Agent:
     def __init__(self):
@@ -272,27 +273,66 @@ class HeuristicSpacePlayer(Agent):
             return overall_dist
 
 class QLearnPlayer(Agent):
-    def __init__(self):
-        self.q_table = {}
+    def __init__(self, game):
+        self.game = game
+
+    def q_learn(self, time_limit, gamma=0.95, epsilon=0.09, alpha_initial=0.175, alpha_decay=0.995):
+        def epsilon_greedy_policy(state):
+            if random.random() < epsilon:
+                # Exploration: choose a random action
+                return random.randint(0, self.game.action_space_size() - 1)
+            else:
+                # Exploitation: choose the action with the highest Q-value
+                return max(range(self.game.action_space_size()), key=lambda a: q_values.get((state, a), 0))
+
+        q_values = {}
+        a_values = {}
+
+        # Q-learning loop
+        start_time = time.time()
+        elapsed_time = 0
+        while elapsed_time < time_limit:
+            state = self.game.get_initial_state()
+            while not self.game.is_terminal(state):
+                action = epsilon_greedy_policy(state)
+                next_state, reward = self.game.take_action(state, action)
+
+                if self.game.is_terminal(next_state):
+                    max_q_prime = 0
+                else:
+                    max_q_prime = max(q_values.get((next_state, a), 0) for a in range(self.game.action_space_size()))
+
+                q_values[(state, action)] = q_values.get((state, action), 0) + a_values.get((state, action), alpha_initial) * (
+                        reward + gamma * max_q_prime - q_values.get((state, action), 0))
+                state = next_state
+                a_values[(state, action)] = a_values.get((state, action), alpha_initial) * alpha_decay
+
+            # Update elapsed time
+            elapsed_time = time.time() - start_time
+
+        # Pick the best policy
+        def policy(state):
+            max_q_value = float("-inf")
+            best_action = None
+
+            for action in range(self.game.action_space_size()):
+                q_value = q_values.get((state, action), 0)
+                if q_value > max_q_value:
+                    max_q_value = q_value
+                    best_action = action
+
+            return best_action
+
+        return policy
 
     def choose_move(self, possible_moves):
-        # Randomly explore or exploit based on epsilon-greedy strategy
-        epsilon = 0.2  # Exploration rate
-        if random.random() < epsilon:
-            return random.randint(1, len(possible_moves))
-        else:
-            # Choose the move with the highest Q-value
-            best_move = max(possible_moves, key=lambda move: self.get_q_value(move))
-            return possible_moves.index(best_move) + 1
+        # Implement Q-learning
+        policy = self.q_learn(time_limit=10)  # Set time limit as needed
 
-    def get_q_value(self, move):
-        # If move not in Q-table, initialize it with a default value
-        if move not in self.q_table:
-            self.q_table[move] = 0
-        return self.q_table[move]
+        # Convert state to a format suitable for Q-learning
+        state = self.game.get_state_representation()
 
-    def update_q_value(self, move, reward, learning_rate=0.1, discount_factor=0.9):
-        # Update Q-value based on Q-learning update rule
-        if move not in self.q_table:
-            self.q_table[move] = 0
-        self.q_table[move] += learning_rate * (reward + discount_factor * max(self.q_table.values()) - self.q_table[move])
+        # Choose action based on learned policy
+        action = policy(state)
+
+        return action
