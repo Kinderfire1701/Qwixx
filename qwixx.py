@@ -13,6 +13,13 @@ class QwixxGame:
             self.print_info = True
         else:
             self.print_info = False
+        self.player_types = player_types
+    
+    def refresh(self):
+        self.players = self.initialize_players(*self.player_types)
+        self.active_player_index = 0
+        self.dice = [Dice('Red'), Dice('Yellow'), Dice('Green'), Dice('Blue'), Dice('White'), Dice('White')]
+        self.game_over = False
 
     def initialize_players(self, *player_types):
         players = []
@@ -256,9 +263,9 @@ class QwixxGame:
                 self.print_score_sheets()
             self.play_round()
 
-        #if self.print_info:
-        print("Game Over!")
-        self.print_score_sheets()
+        if self.print_info:
+            print("Game Over!")
+            self.print_score_sheets()
 
         #return scores
         scores = []
@@ -268,6 +275,9 @@ class QwixxGame:
             if self.print_info:
                 print(f"player {player} score == {score}")
 
+        #reset the game
+        self.refresh()
+
         return scores
 
     def calculate_score(self, player):
@@ -275,7 +285,7 @@ class QwixxGame:
     
 
 # Start the game
-game = QwixxGame("heuristic_greedy","heuristic_space","greedy")
+#game = QwixxGame("heuristic_greedy","heuristic_space","greedy")
 
-scores = game.play()
-print(scores)
+#scores = game.play()
+#print(scores)
