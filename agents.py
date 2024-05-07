@@ -279,7 +279,7 @@ class QLearnPlayer(Agent):
         self.game = game
         self.learned = False
 
-    def q_learn(self, time_limit, gamma=0.95, epsilon=0.09, alpha_initial=0.175, alpha_decay=0.995):
+    def q_learn(self, time_limit, gamma=0.99, epsilon=0.1, alpha_initial=0.3, alpha_decay=0.995):
         def state_to_partition(state):
             max_penalties = max(max(score_sheet['Penalties'] for score_sheet in state['player_scores']), 1)
             rows_locked = sum(1 for player in state['player_scores'] for color in ['Red', 'Yellow', 'Green', 'Blue'] if player[color]['order'] == 'locked')
@@ -289,7 +289,7 @@ class QLearnPlayer(Agent):
             for player in state['player_scores']:
                 player_x_counts = []
                 for color in ['Red', 'Yellow', 'Green', 'Blue']:
-                    x_count = player[color]['x_count']
+                    x_count = player[color]['x_count'] // 3
                     player_x_counts.append(x_count)
                 x_counts.append(tuple(player_x_counts))
 
