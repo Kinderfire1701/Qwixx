@@ -33,7 +33,7 @@ class QwixxGame:
             elif player_type.lower() == "heuristic_space":
                 players.append(HeuristicSpacePlayer())
             elif player_type.lower() == "q_learn":
-                players.append(QLearnPlayer())
+                players.append(QLearnPlayer(self))
         return players
 
     def print_score_sheets(self):
@@ -121,14 +121,14 @@ class QwixxGame:
         active_player = self.players[self.active_player_index]
 
         # Active Player
-        self.active_player_move(active_player)
+        self.move(active_player)
         if self.game_over == True:
             return
 
         # inactive players
         for other_player in self.players:
             if other_player != active_player:
-                self.inactive_player_move(other_player)
+                self.move(other_player)
                 if self.game_over == True:
                     return
 
@@ -142,25 +142,150 @@ class QwixxGame:
         if self.check_end_conditions():
             self.game_over = True
 
-    def check_end_conditions(self):
-        # Check if any player has 4 penalties
-        for player in self.players:
-            if player.score_sheet['Penalties'] >= 4:
+    def take_action(self,player,action):
+        self.roll_dice()
+        if self.print_info:
+            print(f"{player.__class__.__name__}'s turn:")
+            print("Rolling dice...")
+        
+            # Print dice color and score
+            if self.print_info:
+                print("Dice:")
+                for die in self.dice:
+                    print(f"  {die.color}: {die.value}")
+
+        active_player = self.players[self.active_player_index]
+
+        # Active Player
+        #print("Active player:")
+        #print(player.__class__.__name__, ' =?= ', active_player.__class__.__name__)
+        if player.__class__.__name__ == active_player.__class__.__name__:
+            player.update_score_sheet(action)
+        else:
+            self.move(active_player)
+        if self.game_over == True:
+            return
+
+        # inactive players
+        for other_player in self.players:
+            if other_player != active_player:
+                #print("Inactive player player:")
+                #print(player.__class__.__name__, ' =?= ', other_player.__class__.__name__)
+                if player.__class__.__name__ == other_player.__class__.__name__:
+                    player.update_score_sheet(action)
+                else:
+                    self.move(other_player)
+                if self.game_over == True:
+                    return
+
+        # Change active player
+        self.active_player_index = (self.active_player_index + 1) % len(self.players)
+
+        #update all players scoresheets to reflect locked rows
+        self.lock()
+
+        # Check end conditions
+        if self.check_end_conditions():
+            self.game_over = True
+
+        #return new state
+        return self.get_state_representation()
+
+    def get_possible_moves(self, player):
+        if self.players[self.active_player_index] == player:
+            white_dice_1 = next(die for die in self.dice if die.color == 'White')
+            white_dice_2 = next(die for die in self.dice if die.color == 'White' and die != white_dice_1)
+
+            # Generate possible moves
+            possible_moves_white = []
+            possible_moves_colored = []
+
+            # Iterate through each color
+            for color in ['Red', 'Yellow', 'Green', 'Blue']:
+                if self.check_valid_move(1, player.score_sheet[color], white_dice_1, white_dice_2):
+                    possible_moves_white.append((white_dice_1.value + white_dice_2.value, color))
+
+            for color in ['Red', 'Yellow', 'Green', 'Blue']:
+                for white_die in [white_dice_1, white_dice_2]:
+                    for colored_die in [die for die in self.dice if die.color == color]:
+                        if self.check_valid_move(2, player.score_sheet[color], white_die, colored_die):
+                            possible_moves_colored.append((white_die.value + colored_die.value, color))
+
+            possible_moves = list(itertools.product(possible_moves_white, possible_moves_colored))
+            possible_moves = possible_moves + possible_moves_white + possible_moves_colored
+
+            #remove duplicates
+            nondup_possible_moves = list(set(possible_moves))
+            possible_moves = []
+
+            #remove trivially similar moves (12 in green and 12 in green), for example
+            for move in nondup_possible_moves:
+                if type(move[0]) == int:
+                    possible_moves.append(move)
+                else:
+                    if move[0] != move[1]:
+                        possible_moves.append(move)
+                
+            possible_moves.append('Penalty')
+            if isinstance(player, HumanPlayer):
+                possible_moves.append('Q')
+            
+            return possible_moves
+        else:
+            white_dice_1 = next(die for die in self.dice if die.color == 'White')
+            white_dice_2 = next(die for die in self.dice if die.color == 'White' and die != white_dice_1)
+
+            # Generate possible moves
+            possible_moves = []
+
+            # Iterate through each color
+            for color in ['Red', 'Yellow', 'Green', 'Blue']:
+                if self.check_valid_move(1, player.score_sheet[color], white_dice_1, white_dice_2):
+                    possible_moves.append((white_dice_1.value + white_dice_2.value, color))
+
+            possible_moves.append('Pass')
+            if isinstance(player, HumanPlayer):
+                possible_moves.append('Q')
+
+            return possible_moves
+
+    def check_end_conditions(self, state=None):
+        if state == None:
+            # Check if any player has 4 penalties
+            for player in self.players:
+                if player.score_sheet['Penalties'] >= 4:
+                    if self.print_info:
+                        print(f"{player.__class__.__name__} has 4 penalties. Game over!")
+                    return True
+
+            # Check if two rows are locked
+            locked_rows = 0
+            for color in ['Red', 'Yellow', 'Green', 'Blue']:
+                if self.players[0].score_sheet[color]['order'] == 'locked':
+                    locked_rows += 1
+            if locked_rows >= 2:
                 if self.print_info:
-                    print(f"{player.__class__.__name__} has 4 penalties. Game over!")
+                    print("Two rows are locked. Game over!")
                 return True
 
-        # Check if two rows are locked
-        locked_rows = 0
-        for color in ['Red', 'Yellow', 'Green', 'Blue']:
-            if self.players[0].score_sheet[color]['order'] == 'locked':
-                locked_rows += 1
-        if locked_rows >= 2:
-            if self.print_info:
-                print("Two rows are locked. Game over!")
-            return True
+            return False
+        else:
+            for score_sheet in state['player_scores']:
+                if score_sheet['Penalties'] >= 4:
+                    if self.print_info:
+                        print(f"{player.__class__.__name__} has 4 penalties. Game over!")
+                    return True
+                
+            locked_rows = 0
+            for color in ['Red', 'Yellow', 'Green', 'Blue']:
+                if state['player_scores'][0][color]['order'] == 'locked':
+                    locked_rows += 1
+            if locked_rows >= 2:
+                if self.print_info:
+                    print("Two rows are locked. Game over!")
+                return True
 
-        return False
+            return False
     
     def lock(self):
         to_lock = []
@@ -172,76 +297,15 @@ class QwixxGame:
             for color in to_lock:
                 player.score_sheet[color]['order'] = 'locked'
     
-    def inactive_player_move(self,player):
-        white_dice_1 = next(die for die in self.dice if die.color == 'White')
-        white_dice_2 = next(die for die in self.dice if die.color == 'White' and die != white_dice_1)
-
-        # Generate possible moves
-        possible_moves = []
-
-        # Iterate through each color
-        for color in ['Red', 'Yellow', 'Green', 'Blue']:
-            if self.check_valid_move(1, player.score_sheet[color], white_dice_1, white_dice_2):
-                possible_moves.append((white_dice_1.value + white_dice_2.value, color))
-
-        possible_moves.append('Pass')
-        if isinstance(player, HumanPlayer):
-            possible_moves.append('Q')
+    def move(self,player):
+        possible_moves = self.get_possible_moves(player)
 
         # Prompt the choice method of each player
-        move_choice = player.choose_move(possible_moves)    
-
-        chosen_move = possible_moves[move_choice]
-        if self.print_info:
-            print(f"{player.__class__.__name__} chose:", chosen_move) 
-
-        if chosen_move == 'Q':
-            self.game_over = True
-            return
+        if player.__class__.__name__ == "QLearnPlayer":
+            state = self.get_state_representation()
+            move_choice = player.choose_move(possible_moves, state)
         else:
-            player.update_score_sheet(chosen_move)
-        return
-    
-    def active_player_move(self,player):
-        white_dice_1 = next(die for die in self.dice if die.color == 'White')
-        white_dice_2 = next(die for die in self.dice if die.color == 'White' and die != white_dice_1)
-
-        # Generate possible moves
-        possible_moves_white = []
-        possible_moves_colored = []
-
-        # Iterate through each color
-        for color in ['Red', 'Yellow', 'Green', 'Blue']:
-            if self.check_valid_move(1, player.score_sheet[color], white_dice_1, white_dice_2):
-                possible_moves_white.append((white_dice_1.value + white_dice_2.value, color))
-
-        for color in ['Red', 'Yellow', 'Green', 'Blue']:
-            for white_die in [white_dice_1, white_dice_2]:
-                for colored_die in [die for die in self.dice if die.color == color]:
-                    if self.check_valid_move(2, player.score_sheet[color], white_die, colored_die):
-                        possible_moves_colored.append((white_die.value + colored_die.value, color))
-
-        possible_moves = list(itertools.product(possible_moves_white, possible_moves_colored))
-        possible_moves = possible_moves + possible_moves_white + possible_moves_colored
-
-        #remove duplicates
-        nondup_possible_moves = list(set(possible_moves))
-        possible_moves = []
-
-        #remove trivially similar moves (12 in green and 12 in green), for example
-        for move in nondup_possible_moves:
-            if type(move[0]) == int:
-                possible_moves.append(move)
-            else:
-                if move[0] != move[1]:
-                    possible_moves.append(move)
-            
-        possible_moves.append('Penalty')
-        if isinstance(player, HumanPlayer):
-            possible_moves.append('Q')
-
-        # Prompt the choice method of each player
-        move_choice = player.choose_move(possible_moves)        
+            move_choice = player.choose_move(possible_moves)        
 
         chosen_move = possible_moves[move_choice]
         if self.print_info:
@@ -282,3 +346,28 @@ class QwixxGame:
 
     def calculate_score(self, player):
         return player.calculate_score()
+    
+    def get_state_representation(self):
+        active_player = self.players[self.active_player_index]
+        player_scores = [player.score_sheet for player in self.players]
+        dice_values = [die.value for die in self.dice]
+        
+        # Construct state representation
+        state_representations = {
+            "active_player": active_player,
+            "player_scores": player_scores,
+            "dice_values": dice_values
+        }
+
+        return state_representations
+    
+    def win(self, player):
+        scores = []
+        for player in self.players:
+            score = self.calculate_score(player)
+            scores.append(score)
+        winner_index = scores.index(max(scores))
+        if self.players[winner_index].__class__.__name__ == player.__class__.__name__:
+            return True
+        else:
+            return False

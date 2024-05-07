@@ -272,18 +272,38 @@ class HeuristicSpacePlayer(Agent):
                 overall_dist += distance
             return overall_dist
 
+
 class QLearnPlayer(Agent):
     def __init__(self, game):
+        super().__init__()
         self.game = game
+        self.learned = False
 
     def q_learn(self, time_limit, gamma=0.95, epsilon=0.09, alpha_initial=0.175, alpha_decay=0.995):
-        def epsilon_greedy_policy(state):
+        def state_to_partition(state):
+            max_penalties = max(max(score_sheet['Penalties'] for score_sheet in state['player_scores']), 1)
+            rows_locked = sum(1 for player in state['player_scores'] for color in ['Red', 'Yellow', 'Green', 'Blue'] if player[color]['order'] == 'locked')
+
+            # Calculate X counts for each row and player
+            x_counts = []
+            for player in state['player_scores']:
+                player_x_counts = []
+                for color in ['Red', 'Yellow', 'Green', 'Blue']:
+                    x_count = player[color]['x_count']
+                    player_x_counts.append(x_count)
+                x_counts.append(tuple(player_x_counts))
+
+            partition = (max_penalties // 2) + rows_locked, tuple(x_counts)
+            return partition
+        
+        def epsilon_greedy_policy(state, possible_moves):
+            partition_s = state_to_partition(state)
             if random.random() < epsilon:
-                # Exploration: choose a random action
-                return random.randint(0, self.game.action_space_size() - 1)
+                # Exploration: choose a random valid action
+                return random.choice(possible_moves)
             else:
                 # Exploitation: choose the action with the highest Q-value
-                return max(range(self.game.action_space_size()), key=lambda a: q_values.get((state, a), 0))
+                return max(possible_moves, key=lambda a: q_values.get((partition_s, a), 0))
 
         q_values = {}
         a_values = {}
@@ -292,47 +312,51 @@ class QLearnPlayer(Agent):
         start_time = time.time()
         elapsed_time = 0
         while elapsed_time < time_limit:
-            state = self.game.get_initial_state()
-            while not self.game.is_terminal(state):
-                action = epsilon_greedy_policy(state)
-                next_state, reward = self.game.take_action(state, action)
+            self.game.refresh()
+            while not self.game.check_end_conditions():
+                state = self.game.get_state_representation()
+                possible_moves = self.game.get_possible_moves(self)
+                action = epsilon_greedy_policy(state, possible_moves)
+                next_state = self.game.take_action(self,action)
 
-                if self.game.is_terminal(next_state):
+                partition_s = state_to_partition(state)
+                partition_s_prime = state_to_partition(next_state)
+
+                reward = 0
+                if self.game.check_end_conditions(next_state):
                     max_q_prime = 0
+                    if self.game.win(self):
+                        reward = 200
+                    else:
+                        reward = -200
                 else:
-                    max_q_prime = max(q_values.get((next_state, a), 0) for a in range(self.game.action_space_size()))
+                    new_possible_moves = self.game.get_possible_moves(self)
+                    max_q_prime = max(q_values.get((partition_s_prime, a), 0) for a in new_possible_moves)
 
-                q_values[(state, action)] = q_values.get((state, action), 0) + a_values.get((state, action), alpha_initial) * (
-                        reward + gamma * max_q_prime - q_values.get((state, action), 0))
-                state = next_state
-                a_values[(state, action)] = a_values.get((state, action), alpha_initial) * alpha_decay
+                q_values[(partition_s, action)] = q_values.get((partition_s, action), 0) + a_values.get((partition_s, action), alpha_initial) * (
+                    reward + gamma * max_q_prime - q_values.get((partition_s, action), 0))
+            a_values[(partition_s, action)] = a_values.get((partition_s, action), alpha_initial) * alpha_decay
 
             # Update elapsed time
             elapsed_time = time.time() - start_time
 
         # Pick the best policy
-        def policy(state):
-            max_q_value = float("-inf")
-            best_action = None
-
-            for action in range(self.game.action_space_size()):
-                q_value = q_values.get((state, action), 0)
-                if q_value > max_q_value:
-                    max_q_value = q_value
-                    best_action = action
-
-            return best_action
+        def policy(possible_moves, state):
+            partition_s = state_to_partition(state)
+            best_move = max(possible_moves, key=lambda a: q_values.get((partition_s, action), 0))
+            for i in range(len(possible_moves)):
+                if possible_moves[i] == best_move:
+                    return i
 
         return policy
 
-    def choose_move(self, possible_moves):
+    def choose_move(self, possible_moves, state):
         # Implement Q-learning
-        policy = self.q_learn(time_limit=10)  # Set time limit as needed
-
-        # Convert state to a format suitable for Q-learning
-        state = self.game.get_state_representation()
+        if self.learned == False:
+            self.policy = self.q_learn(time_limit=10)  # Set time limit as needed
+            self.learned = True
 
         # Choose action based on learned policy
-        action = policy(state)
+        action = self.policy(possible_moves, state)
 
         return action

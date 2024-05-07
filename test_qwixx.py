@@ -3,7 +3,7 @@ import time
 from collections import defaultdict
 
 from qwixx import QwixxGame
-from agents import HumanPlayer, GreedyPlayer, HeuristicGreedyPlayer, HeuristicSpacePlayer
+from agents import HumanPlayer, GreedyPlayer, HeuristicGreedyPlayer, HeuristicSpacePlayer, QLearnPlayer
 
 if __name__ == "__main__":
     games = 1000
@@ -11,15 +11,15 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         if sys.argv[1] == "--time":
             run_time = int(sys.argv[2])
-            games = 100
+            games = 5
         else:
             games = int(sys.argv[1])
     
     # Initialize the game
-    game = QwixxGame("greedy", "heuristic_greedy","heuristic_space")  # Replace with your Qwixx game initialization
+    game = QwixxGame("greedy", "q_learn")
     
     # Define the agents
-    agents = [GreedyPlayer(), HeuristicGreedyPlayer(), HeuristicSpacePlayer()]  # Example agents
+    agents = [GreedyPlayer(), QLearnPlayer(None)]
     
     # Track wins for each agent and total games played
     wins = {agent.__class__.__name__: 0 for agent in agents}
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     
     while total_games < games or time.time() - start_time < run_time:
         # Simulate games
-        if total_games % 100 == 0:
+        if total_games % 1 == 0:
             print(f"Played {total_games} games. Wins so far: {wins}")
         batch_results = game.play()  # This will return scores for each player
         total_games += 1
